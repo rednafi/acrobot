@@ -1,4 +1,5 @@
-import asyncio
+"""Database initialization and client management."""
+
 import logging
 
 import libsql_client
@@ -7,11 +8,9 @@ from src import settings
 
 logger = logging.getLogger("acrobot.db")
 
-# Global variable to store the database client
-_db_client = None
-
 
 async def init_db(url: str, token: str, ddl_file_path: str) -> None:
+    """Initialize the database schema."""
     async with libsql_client.create_client(url, auth_token=token) as client:
         with open(ddl_file_path) as f:
             ddl = f.read()
@@ -21,37 +20,12 @@ async def init_db(url: str, token: str, ddl_file_path: str) -> None:
 
 
 async def get_db_client() -> libsql_client.Client:
-    global _db_client
+    """
+    Get a global database client, creating a new one if necessary.
 
-    if _db_client:
-        return _db_client
+    Ensures that a valid and open client is always returned.
+    """
 
-    _db_client = libsql_client.create_client(
+    return libsql_client.create_client(
         settings.turso_database_url, auth_token=settings.turso_auth_token
     )
-    return _db_client
-
-
-if __name__ == "__main__":
-
-    async def main() -> None:
-        url = settings.turso_database_url
-        auth_token = settings.turso_auth_token
-        await init_db(url, auth_token, "sql/ddl.sql")
-
-        client = await get_db_client()
-
-        async with client:
-            await client.execute("DELETE FROM Acro")
-
-            await client.execute("""
-                    -- Inserting sample data into the Acro table
-                    INSERT INTO Acro (key, val) VALUES
-                    ('record1', '["value1", "value2", "value3"]'),
-                    ('record2', '["itemA", "itemB"]');
-            """)
-
-            for row in await client.execute("SELECT * FROM Acro"):
-                print(row)
-
-    asyncio.run(main())

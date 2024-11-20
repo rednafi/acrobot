@@ -1,5 +1,3 @@
-"""Repository class for managing the data in the database."""
-
 import json
 from types import TracebackType
 from typing import Protocol, Self
@@ -10,111 +8,110 @@ from src.db import get_db_client
 
 
 class Repository(Protocol):
-    """Protocol for database repository classes, enforcing context management."""
-
-    async def __aenter__(self) -> Self:
-        """Enter the runtime context for the repository."""
-        ...
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        """Exit the runtime context for the repository."""
-        ...
+    """Protocol for database repository classes."""
 
     async def get(self, key: str) -> list[str]:
-        """Get a value from the database."""
+        """Get the set of values against a key."""
+        ...
+
+    async def list_alike_keys(self, key: str) -> list[str]:
+        """Get similar keys."""
         ...
 
     async def list_keys(self) -> list[str]:
         """List all keys in the database."""
         ...
 
-    async def set(self, key: str, values: list[str]) -> None:
-        """Set a value in the database."""
+    async def add(self, key: str, values: list[str]) -> bool:
+        """Add values to the set against a key."""
         ...
 
-    async def delete(self, key: str) -> None:
-        """Delete a value from the database."""
+    async def remove(self, key: str, values: list[str]) -> bool:
+        """Remove values from the set against a key."""
+        ...
+
+    async def delete(self, key: str) -> bool:
+        """Delete a key and its associated values from the database."""
         ...
 
 
-class AcroRepository(Repository):
+class SqliteRepository(Repository):
     """Repository class for managing the data in the database."""
 
-    _db_client: libsql_client.Client
     _client: libsql_client.Client
 
+    def __init__(self, db_client: libsql_client.Client | None = None) -> None:
+        """Initialize the repository with an optional database client."""
+        self._client = db_client
+
     async def __aenter__(self) -> Self:
-        """Enter the runtime context for the repository."""
-        self._db_client = await get_db_client()
-        self._client = await self._db_client.__aenter__()
+        """Enter the context manager."""
+        self._client = await get_db_client() if not self._client else self._client
         return self
 
     async def __aexit__(
         self,
         exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
-        """Exit the runtime context for the repository."""
-        await self._db_client.__aexit__(exc_type, exc_val, exc_tb)
+        """Exit the context manager."""
+        if self._client:
+            await self._client.__aexit__(exc_type, exc_value, traceback)
+            self._client = None
 
     async def get(self, key: str) -> list[str]:
-        """Get a value from the database."""
+        """Get the set of values against a key."""
         query = libsql_client.Statement("SELECT val FROM Acro WHERE key = ?", (key,))
         result_set = await self._client.execute(query)
-        if not result_set:
+        if not result_set.rows:
             return []
-        # Assuming val is stored as a JSON string in the database
-        return json.loads(result_set[0]["val"])
+        return json.loads(result_set.rows[0]["val"])
+
+    async def list_alike_keys(self, key: str) -> list[str]:
+        """Get similar keys."""
+        query = libsql_client.Statement(
+            "SELECT key FROM Acro WHERE key LIKE ?", (f"%{key}%",)
+        )
+        result_set = await self._client.execute(query)
+        return [row["key"] for row in result_set.rows]
 
     async def list_keys(self) -> list[str]:
         """List all keys in the database."""
         query = libsql_client.Statement("SELECT key FROM Acro")
         result_set = await self._client.execute(query)
-        return [row["key"] for row in result_set]
+        return [row["key"] for row in result_set.rows]
 
-    async def set(self, key: str, values: list[str]) -> None:
-        """Set a value in the database."""
+    async def add(self, key: str, values: list[str]) -> bool:
+        """Add values to the set against a key. Return True if successful."""
+        existing_values = set(await self.get(key))
+        updated_values = existing_values.union(values)
+
         query = libsql_client.Statement(
             "INSERT OR REPLACE INTO Acro (key, val) VALUES (?, ?)",
-            (key, json.dumps(values)),  # Serialize list to JSON string
+            (key, json.dumps(sorted(updated_values))),
         )
         await self._client.execute(query)
+        return True
 
-    async def delete(self, key: str) -> None:
-        """Delete a value from the database."""
-        query = libsql_client.Statement("DELETE FROM Acro WHERE key = ?", (key,))
+    async def remove(self, key: str, values: list[str]) -> bool:
+        """Remove values from the set against a key. Return True if successful."""
+        existing_values = set(await self.get(key))
+        updated_values = existing_values.difference(values)
+
+        if not updated_values:  # If no values remain, delete the key
+            return await self.delete(key)
+
+        query = libsql_client.Statement(
+            "INSERT OR REPLACE INTO Acro (key, val) VALUES (?, ?)",
+            (key, json.dumps(sorted(updated_values))),
+        )
         await self._client.execute(query)
+        return existing_values != updated_values
 
-
-if __name__ == "__main__":
-
-    async def main() -> None:
-        async with AcroRepository() as repo:
-            await repo.set("record1", ["value1", "value2"])
-            await repo.set("record2", ["itemA", "itemB"])
-
-            print("Before replace:")
-            for key in await repo.list_keys():
-                print(key, await repo.get(key))
-
-            # Replace records
-            await repo.set("record1", ["new_value"])
-            await repo.set("record2", ["itemC", "itemD"])
-
-            print("\nAfter replace:")
-            for key in await repo.list_keys():
-                print(key, await repo.get(key))
-
-            # Clean up
-            await repo.delete("record1")
-            await repo.delete("record2")
-
-    import asyncio
-
-    asyncio.run(main())
+    async def delete(self, key: str) -> bool:
+        """Delete a key and its associated values. Return True if successful."""
+        query = libsql_client.Statement("DELETE FROM Acro WHERE key = ?", (key,))
+        val = await self.get(key)
+        await self._client.execute(query)
+        return bool(val)

@@ -24,8 +24,8 @@ ruff: ## Apply ruff.
 	@echo "Applying ruff..."
 	@echo "================"
 	@echo
-	@uv run ruff check --fix $(path)
 	@uv run ruff format $(path)
+	@uv run ruff check --fix $(path)
 
 .PHONY: mypy
 mypy: ## Apply mypy.

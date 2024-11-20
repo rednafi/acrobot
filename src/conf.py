@@ -1,3 +1,5 @@
+"""Settings"""
+
 from enum import StrEnum
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,6 +13,7 @@ class Env(StrEnum):
 class Settings(BaseSettings):
     turso_database_url: str = ""
     turso_auth_token: str = ""
+    telegram_bot_token: str = ""
 
 
 def create_settings(env: Env) -> Settings:
@@ -23,7 +26,6 @@ def create_settings(env: Env) -> Settings:
         extra="ignore",
     )
 
-    # Create a new class that inherits from Settings
     class ConfiguredSettings(Settings):
         model_config = config
 
