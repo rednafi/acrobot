@@ -1,34 +1,42 @@
 """Repository class for managing the data in the database."""
 
 import json
-from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import Self
+from typing import Protocol, Self
 
 import libsql_client
 
 from src.db import get_db_client
 
 
-class Repository(ABC):
-    """Protocol for database repository classes."""
+class Repository(Protocol):
+    """Protocol for database repository classes, enforcing context management."""
 
-    @abstractmethod
+    async def __aenter__(self) -> Self:
+        """Enter the runtime context for the repository."""
+        ...
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Exit the runtime context for the repository."""
+        ...
+
     async def get(self, key: str) -> list[str]:
         """Get a value from the database."""
         ...
 
-    @abstractmethod
     async def list_keys(self) -> list[str]:
         """List all keys in the database."""
         ...
 
-    @abstractmethod
     async def set(self, key: str, values: list[str]) -> None:
         """Set a value in the database."""
         ...
 
-    @abstractmethod
     async def delete(self, key: str) -> None:
         """Delete a value from the database."""
         ...
