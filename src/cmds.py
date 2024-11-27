@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from src.repo import SqliteRepository
+from src.repo import RemoveStatus, SqliteRepository
 
 
 # Commands Enum
@@ -104,9 +104,9 @@ async def handle_add(repo: SqliteRepository, args: list[str]) -> str:
         return format_error_message(str(e))
 
     async with repo:
-        success = await repo.add(key, values)
+        status = await repo.add(key, values)
 
-    if success:
+    if status == RemoveStatus.OK:
         values_formatted = "\n".join(f"- {v}" for v in values)
         return format_success_message(
             "Values added successfully",
@@ -159,17 +159,22 @@ async def handle_remove(repo: SqliteRepository, args: list[str]) -> str:
         return format_error_message(str(e))
 
     async with repo:
-        success = await repo.remove(key, values)
+        status = await repo.remove(key, values)
 
     values_formatted = "\n".join(f"- {v}" for v in values)
-    if success:
+    if status == RemoveStatus.OK:
         return format_success_message(
             "Values removed successfully",
             f"*Key*\n\n`{key}`\n\n*Values*\n```\n{values_formatted}\n```",
         )
-    return format_error_message(
-        f"Values not found.\n\n*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```"
-    )
+
+    if status == RemoveStatus.NO_KEY:
+        return format_error_message(f"Key `{key}` not found.")
+
+    if status == RemoveStatus.NO_VALUES:
+        return format_error_message(
+            f"Values not found.\n\n*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```"
+        )
 
 
 async def handle_delete(repo: SqliteRepository, args: list[str]) -> str:
@@ -181,9 +186,9 @@ async def handle_delete(repo: SqliteRepository, args: list[str]) -> str:
         return format_error_message(str(e))
 
     async with repo:
-        success = await repo.delete(key)
+        status = await repo.delete(key)
 
-    if success:
+    if status == RemoveStatus.OK:
         return format_success_message(
             "Key deleted successfully", f"*Key*\n```\n{key}\n```"
         )

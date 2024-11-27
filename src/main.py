@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import signal
 
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
@@ -8,16 +9,14 @@ from src import settings
 from src.cmds import acrobot
 from src.db import init_db
 from src.repo import SqliteRepository
-import os
 
 logger = logging.getLogger("acrobot.main")
 
 
 async def setup_application(repo: SqliteRepository) -> Application:
     """Setup the bot application with handlers and data."""
-    application: Application = (
-        Application.builder().token(settings.telegram_bot_token).build()
-    )
+    application = Application.builder().token(settings.telegram_bot_token).build()
+
     application.bot_data["repo"] = repo
 
     # Add command and message handlers
@@ -32,7 +31,7 @@ async def run_bot() -> None:
     await init_db(
         settings.turso_database_url,
         settings.turso_auth_token,
-        "sql/ddl.sql",
+        "sql/",
     )
     repo = SqliteRepository()
 
@@ -74,6 +73,10 @@ def main() -> None:
 
     # Log the current process ID
     logger.info("Starting the bot on process %d", os.getpid())
+
+    # Log the current environment
+    logger.info("Running in %s environment", os.environ.get("ENVIRONMENT", "local"))
+
     try:
         asyncio.run(run_bot())
     except (KeyboardInterrupt, SystemExit):

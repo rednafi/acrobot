@@ -1,22 +1,26 @@
 """Database initialization and client management."""
 
 import logging
+import pathlib
 
 import libsql_client
+import sqlparse
 
 from src import settings
-import sqlparse
 
 logger = logging.getLogger("acrobot.db")
 
 
-async def init_db(url: str, token: str, ddl_file_path: str) -> None:
+async def init_db(url: str, token: str, sql_dir: str) -> None:
     """Initialize the database schema."""
-    async with libsql_client.create_client(url, auth_token=token) as client:
-        with open(ddl_file_path) as f:
-            ddl = f.read()
+    sql_dir = pathlib.Path(sql_dir)
 
-        await client.batch(sqlparse.split(ddl))
+    async with libsql_client.create_client(url, auth_token=token) as client:
+        with open(sql_dir / "ddl.sql") as ddl_stream:
+            ddl = ddl_stream.read()
+
+        for stmt in sqlparse.split(ddl):
+            await client.execute(stmt)
         logger.info("Database initialized...")
 
 

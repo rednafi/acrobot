@@ -1,8 +1,12 @@
 """Settings"""
 
+import os
 from enum import StrEnum
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+load_dotenv()
 
 
 class Env(StrEnum):
@@ -16,11 +20,14 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
 
 
-def create_settings(env: Env) -> Settings:
+def create_settings(env: Env = Env.LOCAL) -> Settings:
     """Create settings instance with appropriate environment configuration."""
+    environment: str = os.environ.get("ENVIRONMENT", env)
+
+    assert environment == Env.LOCAL or environment == Env.PROD
 
     config = SettingsConfigDict(
-        env_prefix=f"{env.value.upper()}_",
+        env_prefix=f"{environment.upper()}_",
         env_file=".env",
         ignore_empty_file=True,
         extra="ignore",
@@ -30,9 +37,3 @@ def create_settings(env: Env) -> Settings:
         model_config = config
 
     return ConfiguredSettings()
-
-
-if __name__ == "__main__":
-    settings = create_settings(env=Env.PROD)
-    print(settings.turso_database_url)
-    print(settings.turso_auth_token)

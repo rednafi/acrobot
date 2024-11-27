@@ -1,10 +1,26 @@
 import json
+from enum import StrEnum
 from types import TracebackType
 from typing import Protocol, Self
 
 import libsql_client
 
 from src.db import get_db_client
+
+
+class AddStatus(StrEnum):
+    OK = "ok"
+
+
+class RemoveStatus(StrEnum):
+    NO_KEY = "no_key"
+    NO_VALUES = "no_values"
+    OK = "ok"
+
+
+class DeleteStatus(StrEnum):
+    NO_KEY = "no_key"
+    OK = "ok"
 
 
 class Repository(Protocol):
@@ -22,15 +38,15 @@ class Repository(Protocol):
         """List all keys in the database."""
         ...
 
-    async def add(self, key: str, values: list[str]) -> bool:
+    async def add(self, key: str, values: list[str]) -> AddStatus:
         """Add values to the set against a key."""
         ...
 
-    async def remove(self, key: str, values: list[str]) -> bool:
+    async def remove(self, key: str, values: list[str]) -> RemoveStatus:
         """Remove values from the set against a key."""
         ...
 
-    async def delete(self, key: str) -> bool:
+    async def delete(self, key: str) -> DeleteStatus:
         """Delete a key and its associated values from the database."""
         ...
 
@@ -62,7 +78,8 @@ class SqliteRepository(Repository):
 
     async def get(self, key: str) -> list[str]:
         """Get the set of values against a key."""
-        query = libsql_client.Statement("SELECT val FROM Acro WHERE key = ?", (key,))
+
+        query = libsql_client.Statement("SELECT val FROM acro WHERE key = ?", (key,))
         result_set = await self._client.execute(query)
         if not result_set.rows:
             return []
@@ -73,48 +90,54 @@ class SqliteRepository(Repository):
         # Safely escape the input key for the MATCH clause
 
         # Explain this query in detail:
-        # 1. The first SELECT statement uses the FTS5 extension to perform a full-text search
-        # on the key column.
+        # 1. The first part of the UNION ALL query uses the FTS5 MATCH operator to search for
+        # keys that match the input key.
 
-        # 2. The second SELECT statement uses the LIKE operator to perform a substring match on
-        # the key column.
+        # 2. The second part of the UNION ALL query uses the LIKE operator to search for keys
+        # that contain the input key. It also ensures that the key does not match the input key
+        # using a subquery with the FTS5 MATCH operator.
 
-        # 3. The UNION operator combines the results of the two SELECT statements.
+        # 3. The ORDER BY clause sorts the results by the rank of the FTS5 MATCH operator.
 
-        # 4. The ORDER BY clause sorts the results by the rank of the full-text search. The rank
-        # is calculated using the BM25 algorithm.
+        # 4. The LIMIT clause limits the number of results to 10.
 
-        # 5. The LIMIT clause limits the number of results to 10.
         query = libsql_client.Statement(
-        f"""
-        SELECT
-            acro.key,
-            bm25(fts5_key) AS rank
-        FROM fts5_key
-        JOIN acro ON fts5_key.rowid = acro.rowid
-        WHERE fts5_key MATCH ?  -- Full-text search
-        UNION
-        SELECT
-            acro.key,
-            NULL AS rank
-        FROM acro
-        WHERE acro.key LIKE '%' || ? || '%' -- Substring match
-        ORDER BY rank ASC
-        LIMIT 10;
-        """,
-        (key, key),
+            """
+            SELECT
+                acro.key,
+                bm25(acro_fts) AS rank
+            FROM acro_fts
+            JOIN acro ON acro_fts.rowid = acro.rowid
+            WHERE acro_fts MATCH ?
+            UNION ALL
+            SELECT
+                acro.key,
+                NULL AS rank
+            FROM acro
+            WHERE acro.key LIKE '%' || ? || '%'
+            AND NOT EXISTS (
+                SELECT 1
+                FROM acro_fts
+                WHERE acro_fts MATCH ?
+                AND acro_fts.rowid = acro.rowid
+            )
+            ORDER BY rank DESC
+            LIMIT 10;
+            """,
+            (key, key, key)
         )
+
         result_set = await self._client.execute(query)
         return [row["key"] for row in result_set.rows]
 
     async def list_keys(self) -> list[str]:
         """List all keys in the database."""
-        query = libsql_client.Statement("SELECT key FROM Acro")
+        query = libsql_client.Statement("SELECT key FROM acro")
         result_set = await self._client.execute(query)
         return [row["key"] for row in result_set.rows]
 
-    async def add(self, key: str, values: list[str]) -> bool:
-        """Add values to the set against a key. Return True if successful."""
+    async def add(self, key: str, values: list[str]) -> AddStatus:
+        """Add values to the set against a key."""
         existing_values = set(await self.get(key))
         updated_values = existing_values.union(values)
 
@@ -123,26 +146,30 @@ class SqliteRepository(Repository):
             (key, json.dumps(sorted(updated_values))),
         )
         await self._client.execute(query)
-        return True
+        return AddStatus.OK
 
-    async def remove(self, key: str, values: list[str]) -> bool:
-        """Remove values from the set against a key. Return True if successful."""
+    async def remove(self, key: str, values: list[str]) -> RemoveStatus:
+        """Remove values from the set against a key."""
         existing_values = set(await self.get(key))
         updated_values = existing_values.difference(values)
 
+        if not existing_values:
+            return RemoveStatus.NO_KEY
+
         if not updated_values:  # If no values remain, delete the key
-            return await self.delete(key)
+            await self.delete(key)
+            return RemoveStatus.NO_VALUES
 
         query = libsql_client.Statement(
             "INSERT OR REPLACE INTO Acro (key, val) VALUES (?, ?)",
             (key, json.dumps(sorted(updated_values))),
         )
         await self._client.execute(query)
-        return existing_values != updated_values
+        return RemoveStatus.OK
 
-    async def delete(self, key: str) -> bool:
-        """Delete a key and its associated values. Return True if successful."""
-        query = libsql_client.Statement("DELETE FROM Acro WHERE key = ?", (key,))
+    async def delete(self, key: str) -> DeleteStatus:
+        """Delete a key and its associated values."""
+        query = libsql_client.Statement("DELETE FROM acro WHERE key = ?", (key,))
         val = await self.get(key)
         await self._client.execute(query)
-        return bool(val)
+        return DeleteStatus.OK if val else DeleteStatus.NO_KEY

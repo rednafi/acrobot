@@ -1,6 +1,7 @@
+-- Create the main table `acro` with strict mode
 CREATE TABLE IF NOT EXISTS acro (
-    rowid INTEGER PRIMARY KEY,
-    key TEXT NOT NULL UNIQUE,
+    rowid INTEGER PRIMARY KEY, -- Primary key auto-increments by default
+    key TEXT NOT NULL UNIQUE, -- Unique constraint ensures no duplicate keys
     val TEXT DEFAULT NULL CHECK (
         val IS NULL OR (
             json_valid(val) AND
@@ -10,28 +11,30 @@ CREATE TABLE IF NOT EXISTS acro (
     )
 ) STRICT;
 
+-- Create a unique index on the `key` column for fast lookups
 CREATE UNIQUE INDEX IF NOT EXISTS idx_acro_key ON acro(key);
 
-CREATE VIRTUAL TABLE IF NOT EXISTS fts5_key USING fts5(
-    fts_key,
-    content='acro',
-    content_rowid='rowid'
+-- Create the FTS5 table for full-text search
+CREATE VIRTUAL TABLE IF NOT EXISTS acro_fts USING fts5(
+    key, -- Column to be searchable
+    content=''
 );
 
--- Trigger for INSERT
+-- Trigger to handle inserts into `acro`
 CREATE TRIGGER IF NOT EXISTS acro_ai AFTER INSERT ON acro
 BEGIN
-    INSERT INTO fts5_key(rowid, fts_key) VALUES (new.rowid, new.key);
+    INSERT INTO acro_fts(rowid, key) VALUES (new.rowid, new.key);
 END;
 
--- Trigger for UPDATE
+-- Trigger to handle updates to `acro`
 CREATE TRIGGER IF NOT EXISTS acro_au AFTER UPDATE ON acro
+WHEN old.key != new.key
 BEGIN
-    UPDATE fts5_key SET fts_key = new.key WHERE rowid = old.rowid;
+    UPDATE acro_fts SET key = new.key WHERE rowid = old.rowid;
 END;
 
--- Trigger for DELETE
+-- Trigger to handle deletions from `acro`
 CREATE TRIGGER IF NOT EXISTS acro_ad AFTER DELETE ON acro
 BEGIN
-    DELETE FROM fts5_key WHERE rowid = old.rowid;
+    INSERT INTO acro_fts(acro_fts, rowid, key) VALUES ('delete', old.rowid, old.key);
 END;
