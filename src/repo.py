@@ -160,6 +160,10 @@ class SqliteRepository(Repository):
             await self.delete(key)
             return RemoveStatus.NO_VALUES
 
+        # If user tries to remove values not in the set, raise an error
+        if len(updated_values) == len(existing_values):
+            return RemoveStatus.NO_VALUES
+
         query = libsql_client.Statement(
             "INSERT OR REPLACE INTO Acro (key, val) VALUES (?, ?)",
             (key, json.dumps(sorted(updated_values))),
