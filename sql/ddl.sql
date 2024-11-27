@@ -1,20 +1,37 @@
--- DDL for creating the Acro table as a STRICT table.
---
--- Table Description:
--- - `key`: Primary key column storing unique text values.
--- - `val`: JSON column with strict constraints:
---   - Must be NULL or a valid JSON array.
---   - The array must have at least one element.
---   - All elements in the array must be text strings.
--- - STRICT mode ensures exact type enforcement.
-
-CREATE TABLE IF NOT EXISTS Acro (
-    key TEXT PRIMARY KEY, -- Unique identifier for each record
+CREATE TABLE IF NOT EXISTS acro (
+    rowid INTEGER PRIMARY KEY,
+    key TEXT NOT NULL UNIQUE,
     val TEXT DEFAULT NULL CHECK (
         val IS NULL OR (
-            json_valid(val) AND                      -- Ensure the value is valid JSON
-            json_type(val) = 'array' AND             -- JSON must be of type 'array'
-            json_array_length(val) > 0              -- Array must not be empty
+            json_valid(val) AND
+            json_type(val) = 'array' AND
+            json_array_length(val) > 0
         )
     )
 ) STRICT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_acro_key ON acro(key);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS fts5_key USING fts5(
+    fts_key,
+    content='acro',
+    content_rowid='rowid'
+);
+
+-- Trigger for INSERT
+CREATE TRIGGER IF NOT EXISTS acro_ai AFTER INSERT ON acro
+BEGIN
+    INSERT INTO fts5_key(rowid, fts_key) VALUES (new.rowid, new.key);
+END;
+
+-- Trigger for UPDATE
+CREATE TRIGGER IF NOT EXISTS acro_au AFTER UPDATE ON acro
+BEGIN
+    UPDATE fts5_key SET fts_key = new.key WHERE rowid = old.rowid;
+END;
+
+-- Trigger for DELETE
+CREATE TRIGGER IF NOT EXISTS acro_ad AFTER DELETE ON acro
+BEGIN
+    DELETE FROM fts5_key WHERE rowid = old.rowid;
+END;

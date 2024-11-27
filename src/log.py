@@ -1,16 +1,20 @@
 import logging
 
 
-def configure_logger() -> logging.Logger:
+def configure_logger(level: int = logging.INFO) -> logging.Logger:
     """Configure a custom logger."""
 
-    # Create a logger
+    # First configure httpx logger; not configurable
+    httpx_logger = logging.getLogger("httpx")
+    httpx_logger.setLevel(logging.WARNING)
+
+    # Create our own logger
     logger = logging.getLogger("acrobot")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
 
     # Create a handler (console output in this case)
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(level)
 
     # Create a formatter and set it to the handler
     formatter = logging.Formatter(
@@ -23,11 +27,7 @@ def configure_logger() -> logging.Logger:
     if not logger.hasHandlers():
         logger.addHandler(console_handler)
 
-    # Disable propagation to avoid log duplication via uvicorn
+    # Disable propagation to avoid log duplication in some cases
     logger.propagate = False
-
-    # Disable passlib logger
-    # See: <https://github.com/pyca/bcrypt/issues/684>
-    logging.getLogger("passlib").setLevel(logging.ERROR)
 
     return logger

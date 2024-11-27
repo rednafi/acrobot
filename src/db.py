@@ -5,6 +5,7 @@ import logging
 import libsql_client
 
 from src import settings
+import sqlparse
 
 logger = logging.getLogger("acrobot.db")
 
@@ -15,8 +16,8 @@ async def init_db(url: str, token: str, ddl_file_path: str) -> None:
         with open(ddl_file_path) as f:
             ddl = f.read()
 
-        result_set = await client.execute(ddl)
-        logger.info("Database initialized, rows affected: %s", result_set.rows_affected)
+        await client.batch(sqlparse.split(ddl))
+        logger.info("Database initialized...")
 
 
 async def get_db_client() -> libsql_client.Client:

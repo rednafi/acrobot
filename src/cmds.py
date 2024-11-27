@@ -45,34 +45,30 @@ class KeyValCommandArgs(BaseModel):
         return values
 
 
-# Helper Functions
 def parse_command_args(
     command_args: str, require_values: bool = True
 ) -> tuple[str, list[str]]:
     """
     Parse command arguments, allowing spaces in keys and values.
-
-    Args:
-        command_args (str): The arguments passed to the command.
-        require_values (bool): Whether values are required (default: True).
-
-    Returns:
-        tuple[str, list[str]]: A tuple of the key and a list of values.
-
-    Example:
-        /acro add "foo bar" hello, world, hello world
-        → Key: `foo bar`, Values: ["hello", "world", "hello world"]
+    Exactly how Unix command line arguments are parsed.
     """
-    parts = shlex.split(command_args)
-    if len(parts) < 1:
-        raise ValueError("Invalid command format. Expected at least a key.")
 
-    key = parts[0]
-    if require_values and len(parts) < 2:
-        raise ValueError("Invalid command format. Expected a key and values.")
+    # Split the command arguments
+    args = shlex.split(command_args)
 
-    values = " ".join(parts[1:]).split(",") if require_values else []
-    return key.strip(), [v.strip() for v in values if v.strip()]
+    if len(args) < 1:
+        raise ValueError("Missing key argument.")
+
+    key = args[0]
+    values = args[1:] if len(args) > 1 else []
+
+    if not key:
+        raise ValueError("Key must be non-empty.")
+
+    if require_values and not values:
+        raise ValueError("Values must not be empty.")
+
+    return key, values
 
 
 def format_error_message(error_message: str) -> str:
@@ -114,7 +110,7 @@ async def handle_add(repo: SqliteRepository, args: list[str]) -> str:
         values_formatted = "\n".join(f"- {v}" for v in values)
         return format_success_message(
             "Values added successfully",
-            f"*Key*\n\n`{key}`\n\n*Values*\n\n{values_formatted}",
+            f"*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```",
         )
     return format_error_message(f"Failed to add values for key `{key}`.")
 
@@ -133,20 +129,25 @@ async def handle_get(repo: SqliteRepository, args: list[str]) -> str:
 
     if not values:
         if alike_keys:
-            keys_formatted = "\n".join(f"- `{k}`" for k in alike_keys)
+            keys_formatted = "\n".join(f"- {k}" for k in alike_keys)
             return format_error_message(
                 (
                     f"Values not found for key `{key}`. "
                     "Did you mean one of these?\n\n"
-                    "*Similar keys\n\n*"
+                    "*Keys*\n"
+                    "```\n"
                     f"{keys_formatted}"
+                    "\n```"
                 )
             )
 
         return format_error_message(f"Values not found for key `{key}`.")
 
-    values_formatted = "\n".join(f"- `{v}`" for v in values)
-    return format_success_message(f"*{key}*", values_formatted)
+    values_formatted = "\n".join(f"- {v}" for v in values)
+    return format_success_message(
+        "Get values",
+        f"*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```",
+    )
 
 
 async def handle_remove(repo: SqliteRepository, args: list[str]) -> str:
@@ -160,12 +161,14 @@ async def handle_remove(repo: SqliteRepository, args: list[str]) -> str:
     async with repo:
         success = await repo.remove(key, values)
 
+    values_formatted = "\n".join(f"- {v}" for v in values)
     if success:
         return format_success_message(
-            "Values removed successfully", f"*Key*\n\n`{key}`"
+            "Values removed successfully",
+            f"*Key*\n\n`{key}`\n\n*Values*\n```\n{values_formatted}\n```",
         )
     return format_error_message(
-        f"Failed to remove values for key `{key}`. Are you sure `{values}` exist?"
+        f"Values not found.\n\n*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```"
     )
 
 
@@ -181,10 +184,10 @@ async def handle_delete(repo: SqliteRepository, args: list[str]) -> str:
         success = await repo.delete(key)
 
     if success:
-        return format_success_message("Key deleted successfully", f"*Key*\n\n`{key}`")
-    return format_error_message(
-        f"Failed to delete key `{key}`. Are you sure it exists?"
-    )
+        return format_success_message(
+            "Key deleted successfully", f"*Key*\n```\n{key}\n```"
+        )
+    return format_error_message(f"Key `{key}` not found.")
 
 
 async def handle_list(repo: SqliteRepository) -> str:
@@ -193,37 +196,49 @@ async def handle_list(repo: SqliteRepository) -> str:
         keys = await repo.list_keys()
 
     if not keys:
-        return format_error_message("No keys found in the database.")
+        return format_error_message("No keys found.")
 
-    keys_formatted = "\n".join(f"- `{k}`" for k in keys)
-    return format_success_message("Keys", keys_formatted)
+    keys_formatted = "\n".join(f"- {k}" for k in keys)
+    return format_success_message("List keys", f"*Keys*\n```\n{keys_formatted}\n```")
 
 
 # Main Bot Command Handler
 async def acrobot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle Acrobot commands."""
     if not update.message:
-        logging.warning("Received an update with no message: %s", update)
+        logging.debug("Received an update with no message.")
         return
 
-    if not context.args or len(context.args) < 1:
-        instructions = (
-            "1. *Add a key with values*\n"
-            "   - `/acro add <key> <val1>, <val2>, ...`\n"
-            '   - `/acro add "key with spaces" <val1>, <val2>, ...`\n\n'
-            "2. *Retrieve values for a key*\n"
-            "   - `/acro get <key>`\n"
-            '   - `/acro get "key with spaces"`\n\n'
-            "3. *Remove specific values*\n"
-            "   - `/acro remove <key> <val1>, <val2>, ...`\n"
-            '   - `/acro remove "key with spaces" <val1>, <val2>, ...`\n\n'
-            "4. *Delete a key*\n"
-            "   - `/acro delete <key>`\n"
-            '   - `/acro delete "key with spaces"`\n\n'
-            "5. *List all keys*\n"
-            "   - `/acro list`\n"
-        )
+    instructions = (
+        "1. *Add a key with values*\n"
+        "```\n"
+        "- /acro add <key> <val1> <val2> ...\n"
+        '- /acro add "key with spaces" <val1> <val2> ...\n'
+        '- /acro add <key> "value with spaces"\n\n'
+        "Just like how Unix parses command line arguments."
+        "```\n\n"
+        "2. *Retrieve values for a key*\n"
+        "```\n"
+        "- /acro get <key>\n"
+        '- /acro get "key with spaces"\n'
+        "```\n\n"
+        "3. *Remove specific values*\n"
+        "```\n"
+        "- /acro remove <key> <val1> <val2> ...\n"
+        '- /acro remove "key with spaces" <val1> <val2> ...\n'
+        "```\n\n"
+        "4. *Delete a key*\n"
+        "```\n"
+        "- /acro delete <key>\n"
+        '- /acro delete "key with spaces"\n'
+        "```\n\n"
+        "5. *List all keys*\n"
+        "```\n"
+        "- /acro list\n"
+        "```\n\n"
+    )
 
+    if not context.args or len(context.args) < 1:
         await update.message.reply_text(
             format_instruction_message(
                 "🤖 Acrobot - avoid acronym acrobats!", instructions
@@ -255,9 +270,7 @@ async def acrobot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             case Commands.LIST:
                 response = await handle_list(repo)
             case _:
-                response = format_error_message(
-                    "Unknown command. Use `/acro` to see available commands."
-                )
+                response = format_error_message(f"Unknown command.\n\n{instructions}")
 
         await update.message.reply_text(response, parse_mode=ParseMode.MARKDOWN)
     except Exception:

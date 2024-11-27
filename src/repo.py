@@ -70,8 +70,39 @@ class SqliteRepository(Repository):
 
     async def list_alike_keys(self, key: str) -> list[str]:
         """Get similar keys."""
+        # Safely escape the input key for the MATCH clause
+
+        # Explain this query in detail:
+        # 1. The first SELECT statement uses the FTS5 extension to perform a full-text search
+        # on the key column.
+
+        # 2. The second SELECT statement uses the LIKE operator to perform a substring match on
+        # the key column.
+
+        # 3. The UNION operator combines the results of the two SELECT statements.
+
+        # 4. The ORDER BY clause sorts the results by the rank of the full-text search. The rank
+        # is calculated using the BM25 algorithm.
+
+        # 5. The LIMIT clause limits the number of results to 10.
         query = libsql_client.Statement(
-            "SELECT key FROM Acro WHERE key LIKE ?", (f"%{key}%",)
+        f"""
+        SELECT
+            acro.key,
+            bm25(fts5_key) AS rank
+        FROM fts5_key
+        JOIN acro ON fts5_key.rowid = acro.rowid
+        WHERE fts5_key MATCH ?  -- Full-text search
+        UNION
+        SELECT
+            acro.key,
+            NULL AS rank
+        FROM acro
+        WHERE acro.key LIKE '%' || ? || '%' -- Substring match
+        ORDER BY rank ASC
+        LIMIT 10;
+        """,
+        (key, key),
         )
         result_set = await self._client.execute(query)
         return [row["key"] for row in result_set.rows]
