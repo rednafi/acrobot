@@ -2,7 +2,6 @@ import logging
 import shlex
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, ValidationError, model_validator
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
@@ -19,30 +18,6 @@ class Commands(StrEnum):
     REMOVE = "remove"
     DELETE = "delete"
     LIST = "list"
-
-
-# Pydantic Models
-class KeyCommandArgs(BaseModel):
-    """Model for commands requiring only a key."""
-
-    key: str = Field(..., min_length=1, description="Key must be non-empty.")
-
-
-class KeyValCommandArgs(BaseModel):
-    """Model for commands requiring a key and one or more values."""
-
-    key: str = Field(..., min_length=1, description="Key must be non-empty.")
-    values: list[str] = Field(..., min_items=1, description="Values must not be empty.")
-
-    @model_validator(mode="after")
-    def sanitize_values(cls, values: dict) -> dict:
-        print(type(values))
-        """Sanitize and handle comma-separated values."""
-        if isinstance(values.get("values"), str):
-            values["values"] = [
-                v.strip() for v in values["values"].split(",") if v.strip()
-            ]
-        return values
 
 
 def parse_command_args(
@@ -86,9 +61,9 @@ def format_instruction_message(header: str, instructions: str) -> str:
     return f"*{header}*\n\n{instructions}"
 
 
-def handle_validation_error(e: ValidationError) -> str:
+def handle_validation_error(e: ValueError) -> str:
     """Log and format validation errors."""
-    logging.error("Validation failed: %s", e.errors())
+    logging.error("Validation failed: %s", e)
     return format_error_message(
         "Invalid input. Make sure your command matches the expected format."
     )

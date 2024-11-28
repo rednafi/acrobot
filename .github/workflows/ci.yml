@@ -1,0 +1,65 @@
+name: Run unit tests and deploy
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+  schedule:
+    # Every Sunday at 8:05 UTC
+    - cron: "5 8 * * 0"
+
+  workflow_dispatch: # Allows the workflow to be triggered manually
+
+# If you trigger a new workflow while the previous one is running,
+# this will cancel the previous one.
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      # Single configuration: Ubuntu with Python 3.13
+      matrix:
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install the dependencies
+        run: |
+          echo "Installing the dependencies..."
+          uv sync
+
+      - name: Check linter
+        run: |
+          echo "Checking linter formatting..."
+          make lint-check
+
+      - name: Run tests
+        run: |
+          echo "Running the tests..."
+          make test
+
+  deploy:
+    needs: run-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dummy deploy command
+        run: |
+          echo "This is a dummy deploy command. Replace this with Fly.io deployment steps."

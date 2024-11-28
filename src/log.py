@@ -1,33 +1,49 @@
 import logging
+import os
+
+import logfire
+
+from src import settings
+from src.conf import Env
 
 
 def configure_logger(level: int = logging.INFO) -> logging.Logger:
     """Configure a custom logger."""
 
-    # First configure httpx logger; not configurable
-    httpx_logger = logging.getLogger("httpx")
-    httpx_logger.setLevel(logging.WARNING)
+    # Create logfire handler
+    environment = os.environ.get("ENVIRONMENT", None)
+    logfire_token = settings.logfire_token if environment == Env.PROD else None
+    send_to_logfire = bool(logfire_token)
+    logfire.configure(
+        token=logfire_token,
+        service_name="acrobot",
+        environment=environment,
+        send_to_logfire=send_to_logfire,
+    )
 
-    # Create our own logger
-    logger = logging.getLogger("acrobot")
-    logger.setLevel(level)
+    logfire_handler = logfire.LogfireLoggingHandler()
+    logfire_handler.setLevel(level)
 
-    # Create a handler (console output in this case)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(level)
-
-    # Create a formatter and set it to the handler
+    # Create a formatter
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    console_handler.setFormatter(formatter)
+    logfire_handler.setFormatter(formatter)
 
-    # Add the handler to the logger
+    # Configure httpx logger
+    httpx_logger = logging.getLogger("httpx")
+    httpx_logger.setLevel(logging.WARNING)
+
+    if not httpx_logger.hasHandlers():
+        httpx_logger.addHandler(logfire_handler)
+    httpx_logger.propagate = False
+
+    # Configure acrobot logger
+    logger = logging.getLogger("acrobot")
+    logger.setLevel(level)
     if not logger.hasHandlers():
-        logger.addHandler(console_handler)
-
-    # Disable propagation to avoid log duplication in some cases
+        logger.addHandler(logfire_handler)
     logger.propagate = False
 
     return logger

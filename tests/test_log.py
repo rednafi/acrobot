@@ -35,7 +35,7 @@ def canned_logger() -> Iterator[logging.Logger]:
 def test_configure_logger(
     canned_logger: logging.Logger, caplog: LogCaptureFixture
 ) -> None:
-    # Test if logger is configured properly
+    """Test if the logger is configured correctly."""
     with caplog.at_level(logging.INFO, logger="acrobot"):
         canned_logger.info("Test log message")
 
@@ -46,6 +46,7 @@ def test_configure_logger(
 
 
 def test_log_output_format(canned_logger: logging.Logger) -> None:
+    """Test if the log output is formatted correctly."""
     # Set up a StringIO stream to capture log output
     stream = StringIO()
     handler = logging.StreamHandler(stream)
@@ -71,3 +72,35 @@ def test_log_output_format(canned_logger: logging.Logger) -> None:
     # Check the log output format
     assert "acrobot - INFO - Test log message" in log_output
     assert log_output.startswith("20")  # The log should start with a year like "2024"
+
+
+def test_httpx_logger_level() -> None:
+    """Test if the httpx logger level is set correctly."""
+    logger = logging.getLogger("httpx")
+
+    # Ensure the logger level is set to WARNING
+    assert logger.level == logging.WARNING
+
+    # Ensure the logger has a logfire handler
+    assert any(isinstance(handler, logging.Handler) for handler in logger.handlers)
+
+
+def test_logfire_handler_configuration() -> None:
+    """Test if the logfire handler is configured properly."""
+    logger = logging.getLogger("acrobot")
+    configure_logger()
+
+    # Ensure a logfire handler is present
+    logfire_handlers = [
+        handler for handler in logger.handlers if isinstance(handler, logging.Handler)
+    ]
+    assert len(logfire_handlers) == 1
+
+    handler = logfire_handlers[0]
+    assert handler.level == logging.INFO
+
+    # Check the formatter
+    assert isinstance(handler.formatter, logging.Formatter)
+    formatter = handler.formatter
+    assert formatter._fmt == "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    assert formatter.datefmt == "%Y-%m-%d %H:%M:%S"

@@ -8,6 +8,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from src import settings
 from src.cmds import acrobot
 from src.db import init_db
+from src.log import configure_logger
 from src.repo import SqliteRepository
 
 logger = logging.getLogger("acrobot.main")
@@ -70,6 +71,7 @@ async def run_bot() -> None:
 
 def main() -> None:
     """Entry point for running the bot."""
+    configure_logger()
 
     # Log the current process ID
     logger.info("Starting the bot on process %d", os.getpid())

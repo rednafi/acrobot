@@ -10,11 +10,11 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pydantic-settings>=2.6.1",
-    "pydantic>=2.9.2",
     "pydantic-logfire>=0.0.1",
     "python-telegram-bot>=21.7",
     "libsql-client>=0.3.1",
     "sqlparse>=0.5.2",
+    "logfire>=2.5.0",
 ]
 
 [dependency-groups]

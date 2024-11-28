@@ -124,7 +124,7 @@ class SqliteRepository(Repository):
             ORDER BY rank DESC
             LIMIT 10;
             """,
-            (key, key, key)
+            (key, key, key),
         )
 
         result_set = await self._client.execute(query)

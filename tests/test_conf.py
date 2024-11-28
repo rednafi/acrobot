@@ -1,68 +1,72 @@
-from pathlib import Path
 from typing import Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.conf import Env, create_settings
+from src.conf import Env, Settings, create_settings
 
 
 @pytest.fixture
-def mock_env_files(tmp_path: Path) -> Generator[Path, None, None]:
-    """Create temporary .env and .env.sample files with test configuration."""
-
-    # Main .env file
-    env_content = """
-# Local settings
-LOCAL_TURSO_DATABASE_URL=file:local.db
-LOCAL_TURSO_AUTH_TOKEN=local-token
-
-# Prod settings
-PROD_TURSO_DATABASE_URL=https://prod.db
-PROD_TURSO_AUTH_TOKEN=prod-token
-""".strip()
-
-    # Create both files
-    env_file = tmp_path / ".env"
-    env_file.write_text(env_content)
-    yield env_file
-
-    # Cleanup
-    env_file.unlink(missing_ok=True)
+def mock_env_vars() -> Generator[dict[str, str], None, None]:
+    """Fixture to mock environment variables."""
+    env_vars = {
+        "ENVIRONMENT": "local",
+        "LOCAL_TURSO_DATABASE_URL": "mock_local_database_url",
+        "LOCAL_TURSO_AUTH_TOKEN": "mock_local_auth_token",
+        "LOCAL_TELEGRAM_BOT_TOKEN": "mock_local_telegram_token",
+        "LOCAL_LOGFIRE_TOKEN": "mock_local_logfire_token",
+    }
+    with patch.dict("os.environ", env_vars, clear=True):
+        yield env_vars
 
 
 @pytest.fixture
-def _mock_env(mock_env_files: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Setup environment for testing."""
-    monkeypatch.chdir(mock_env_files.parent)
+def mock_dotenv() -> Generator[MagicMock, None, None]:
+    """Fixture to mock load_dotenv."""
+    with patch("src.conf.load_dotenv", MagicMock()) as mock:
+        yield mock
 
 
-@pytest.mark.usefixtures("_mock_env")
-def test_create_settings_local() -> None:
-    """Test local environment settings."""
-    settings = create_settings(env=Env.LOCAL)
-
-    assert settings.turso_database_url == "file:local.db"
-    assert settings.turso_auth_token == "local-token"
-
-
-@pytest.mark.usefixtures("_mock_env")
-def test_create_settings_prod() -> None:
-    """Test production environment settings."""
-    settings = create_settings(env=Env.PROD)
-
-    assert settings.turso_database_url == "https://prod.db"
-    assert settings.turso_auth_token == "prod-token"
+@pytest.mark.usefixtures("mock_dotenv")
+def test_create_settings_valid_env(mock_env_vars: dict[str, str]) -> None:
+    """Test creating settings with a valid environment."""
+    settings = create_settings()
+    assert isinstance(settings, Settings)
+    assert settings.turso_database_url == mock_env_vars["LOCAL_TURSO_DATABASE_URL"]
+    assert settings.turso_auth_token == mock_env_vars["LOCAL_TURSO_AUTH_TOKEN"]
+    assert settings.telegram_bot_token == mock_env_vars["LOCAL_TELEGRAM_BOT_TOKEN"]
+    assert settings.logfire_token == mock_env_vars["LOCAL_LOGFIRE_TOKEN"]
 
 
-def test_create_settings_no_env_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test settings with missing .env file falls back to defaults."""
-    # Change to an empty directory
-    monkeypatch.chdir(tmp_path)
+@pytest.mark.usefixtures("mock_dotenv")
+def test_create_settings_invalid_env() -> None:
+    """Test creating settings with an invalid environment."""
+    with patch.dict("os.environ", {"ENVIRONMENT": "INVALID"}, clear=True):
+        with pytest.raises(ValueError, match="Invalid environment: INVALID"):
+            create_settings()
 
-    settings = create_settings(env=Env.LOCAL)
 
-    # Should use default values from Settings class
-    assert settings.turso_database_url == ""
-    assert settings.turso_auth_token == ""
+@pytest.mark.usefixtures("mock_dotenv")
+def test_create_settings_no_env_variable() -> None:
+    """Test creating settings without ENVIRONMENT variable."""
+    with patch.dict("os.environ", {}, clear=True):
+        with pytest.raises(AssertionError, match="Environment not set"):
+            create_settings()
+
+
+@pytest.mark.usefixtures("mock_dotenv")
+def test_create_settings_invalid_env_variable() -> None:
+    """Test creating settings with an invalid ENVIRONMENT variable."""
+    with patch.dict("os.environ", {"ENVIRONMENT": "INVALID"}, clear=True):
+        with pytest.raises(ValueError, match="Invalid environment: INVALID"):
+            create_settings()
+
+
+@pytest.mark.usefixtures("mock_dotenv")
+def test_env_prefix_behavior(mock_env_vars: dict[str, str]) -> None:
+    """Test settings loading respects the environment prefix."""
+    with patch.dict("os.environ", mock_env_vars, clear=True):
+        settings = create_settings(Env.LOCAL)
+        assert isinstance(settings, Settings)
+        assert settings.turso_database_url == mock_env_vars["LOCAL_TURSO_DATABASE_URL"]
+        assert settings.turso_auth_token == mock_env_vars["LOCAL_TURSO_AUTH_TOKEN"]
