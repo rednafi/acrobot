@@ -42,7 +42,7 @@ def test_create_settings_valid_env(mock_env_vars: dict[str, str]) -> None:
 def test_create_settings_invalid_env() -> None:
     """Test creating settings with an invalid environment."""
     with patch.dict("os.environ", {"ENVIRONMENT": "INVALID"}, clear=True):
-        with pytest.raises(ValueError, match="Invalid environment: INVALID"):
+        with pytest.raises(AssertionError, match="Invalid environment: INVALID"):
             create_settings()
 
 
@@ -58,7 +58,7 @@ def test_create_settings_no_env_variable() -> None:
 def test_create_settings_invalid_env_variable() -> None:
     """Test creating settings with an invalid ENVIRONMENT variable."""
     with patch.dict("os.environ", {"ENVIRONMENT": "INVALID"}, clear=True):
-        with pytest.raises(ValueError, match="Invalid environment: INVALID"):
+        with pytest.raises(AssertionError, match="Invalid environment: INVALID"):
             create_settings()
 
 

@@ -30,9 +30,7 @@ def create_settings(env: Env | None = None) -> Settings:
 
     # Raise an error if the environment is not valid
     assert environment is not None, "Environment not set"
-
-    if environment not in Env:
-        raise ValueError(f"Invalid environment: {environment}")
+    assert environment in Env, f"Invalid environment: {environment}"
 
     # Build the settings configuration based on the environment
     config = SettingsConfigDict(
