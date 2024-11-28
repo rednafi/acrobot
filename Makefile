@@ -41,7 +41,7 @@ help: ## Show this help message.
 
 .PHONY: test
 test: ## Run the tests against the current version of Python.
-	uv run pytest -vv && cd ..
+	export ENVIRONMENT=local && uv run pytest -vv && cd ..
 
 .PHONY: dep-lock
 dep-lock: ## Freeze deps in 'requirements*.txt' files.
