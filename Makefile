@@ -43,22 +43,26 @@ help: ## Show this help message.
 test: ## Run the tests against the current version of Python.
 	export ENVIRONMENT=local && uv run pytest -vv && cd ..
 
-.PHONY: dep-lock
-dep-lock: ## Freeze deps in 'requirements*.txt' files.
-	@uv lock
-
-.PHONY: dep-sync
-dep-sync: ## Sync venv installation with 'requirements.txt' file.
-	@uv sync
-
-.PHONY: run-container
-run-container: ## Run the app in a docker container.
-	docker compose up -d
-
-.PHONY: kill-container
-kill-container: ## Stop the running docker container.
-	docker compose down
-
 .PHONY: run-local
-run-local: ## Run the app locally.
-	uv run uvicorn svc.main:app --port 5002 --reload
+run-local: ## Run the application locally.
+	@echo
+	@echo "Running the application locally..."
+	@echo "=================================="
+	@echo
+	@uv run python -m src.main
+
+.PHONY: deploy
+deploy: ## Deploy the application to fly.io.
+	@echo
+	@echo "Deploying the application..."
+	@echo "============================="
+	@echo
+	@fly deploy
+
+.PHONY: destroy-machines
+destroy-machines: ## Remove all the machines for this application.
+	@echo
+	@echo "Removing all the machines..."
+	@echo "============================="
+	@echo
+	@fly machines destroy --force

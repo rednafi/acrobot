@@ -60,6 +60,6 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: |
           flyctl deploy --remote-only
-          flyctl scale count 1
+          flyctl scale count 1 --yes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
