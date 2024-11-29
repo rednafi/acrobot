@@ -1,16 +1,16 @@
 #! /usr/bin/env bash
 
-# Reads the .env.local file and copies it to .env
+# Reads the .env.sample file and copies it to .env
 
 set -euo pipefail
 
-# Check if .env.local file exists
-if [[ ! -f ".env.local" ]]; then
-    echo "Error: .env.local file not found!"
+# Check if .env.sample file exists
+if [[ ! -f ".env.sample" ]]; then
+    echo "Error: .env.sample file not found!"
     exit 1
 fi
 
-# Copy the .env.local file to .env
-cp .env.local .env
+# Copy the .env.sample file to .env
+cp .env.sample .env
 
-echo ".env has been updated with .env.local values."
+echo ".env has been updated with .env.sample values."

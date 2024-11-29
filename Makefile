@@ -1,10 +1,20 @@
 path := .
 
-define Comment
-	- Run `make help` to see all the available options.
-	- Run `make lint` to run the linter.
-	- Run `make lint-check` to check linter conformity.
-endef
+.PHONY: init
+init: ## Initialize the project.
+	@echo
+	@echo "Initializing the project..."
+	@echo "============================"
+	@echo
+	@uv sync
+
+.PHONY: run-local
+run-local: ## Run the application locally.
+	@echo
+	@echo "Running the application locally..."
+	@echo "=================================="
+	@echo
+	@uv run python -m src.main
 
 
 .PHONY: lint
@@ -42,14 +52,6 @@ help: ## Show this help message.
 .PHONY: test
 test: ## Run the tests against the current version of Python.
 	export ENVIRONMENT=local && uv run pytest -vv && cd ..
-
-.PHONY: run-local
-run-local: ## Run the application locally.
-	@echo
-	@echo "Running the application locally..."
-	@echo "=================================="
-	@echo
-	@uv run python -m src.main
 
 .PHONY: deploy
 deploy: ## Deploy the application to fly.io.

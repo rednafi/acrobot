@@ -3,20 +3,11 @@ primary_region = "ams"
 
 [build]
 
-# Service configuration
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = "stop"
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ["app"]
-
 # Virtual machine configuration
 [[vm]]
-  size = "shared-cpu-1x" # Change to a VM size with more RAM (e.g., dedicated-cpu-1x)
+  size = "shared-cpu-1x"   # VM size with sufficient resources
   processes = ["app"]
-  memory_mb = 384          # Set custom memory size (2GB = 2048MB)
+  memory_mb = 512          # Set custom memory size (512MB)
   ignore_app_secrets = false
 
 # Inject runtime environment variables
