@@ -221,7 +221,7 @@ async def acrobot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not context.args or len(context.args) < 1:
         await update.message.reply_text(
             format_instruction_message(
-                "🤖 Acrobot - avoid acronym acrobats!", instructions
+                "🤖 Acrobot - avoid acronym acrobatics!", instructions
             ),
             parse_mode=ParseMode.MARKDOWN,
         )
