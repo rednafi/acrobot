@@ -1,0 +1,27 @@
+app = "acrobot-rednafi"
+primary_region = "ams"
+
+[build]
+
+# Service configuration
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+# Virtual machine configuration
+[[vm]]
+  size = "shared-cpu-1x"
+  processes = ["app"]
+  # Ensure app secrets are not ignored
+  ignore_app_secrets = false
+
+# Inject runtime environment variables
+[env]
+  PYTHONUNBUFFERED = "1"  # Ensure Python logs appear instantly
+
+
+
