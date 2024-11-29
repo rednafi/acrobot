@@ -16,7 +16,7 @@ primary_region = "ams"
 [[vm]]
   size = "shared-cpu-1x" # Change to a VM size with more RAM (e.g., dedicated-cpu-1x)
   processes = ["app"]
-  memory_mb = 512          # Set custom memory size (2GB = 2048MB)
+  memory_mb = 384          # Set custom memory size (2GB = 2048MB)
   ignore_app_secrets = false
 
 # Inject runtime environment variables
