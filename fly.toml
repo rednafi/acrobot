@@ -14,14 +14,11 @@ primary_region = "ams"
 
 # Virtual machine configuration
 [[vm]]
-  size = "shared-cpu-1x"
+  size = "shared-cpu-1x" # Change to a VM size with more RAM (e.g., dedicated-cpu-1x)
   processes = ["app"]
-  # Ensure app secrets are not ignored
+  memory_mb = 512          # Set custom memory size (2GB = 2048MB)
   ignore_app_secrets = false
 
 # Inject runtime environment variables
 [env]
   PYTHONUNBUFFERED = "1"  # Ensure Python logs appear instantly
-
-
-
