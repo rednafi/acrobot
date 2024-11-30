@@ -106,6 +106,9 @@ class SqliteRepository(Repository):
         """Search for keys and values that match the input term (case-insensitively) and return up
         to 10 matching keys."""
 
+        if not term:
+            return Result(status=Status.NO_KEY, data=[])
+
         query = libsql_client.Statement(
             """
             WITH ranked_rows AS (
@@ -160,6 +163,9 @@ class SqliteRepository(Repository):
 
     async def remove(self, key: str, values: list[str]) -> Result[None]:
         """Remove specified values from the list associated with the key."""
+
+        if not values:
+            return Result(status=Status.NO_VALUES, data=None)
 
         # Fetch current values associated with the key
         current_values_result = await self.get(key)
