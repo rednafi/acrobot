@@ -100,7 +100,9 @@ async def handle_get(repo: SqliteRepository, args: list[str]) -> str:
         return format_error_message(str(e))
 
     if values:
-        return format_error_message("Only the values for a single key can be retrieved at a time.")
+        return format_error_message(
+            "Only the values for a single key can be retrieved at a time."
+        )
 
     async with repo:
         get_result = await repo.get(key)
@@ -128,6 +130,7 @@ async def handle_get(repo: SqliteRepository, args: list[str]) -> str:
         "Get values",
         f"*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```",
     )
+
 
 async def handle_search(repo: SqliteRepository, args: list[str]) -> str:
     """Handle the search command."""
@@ -209,7 +212,9 @@ async def handle_list(repo: SqliteRepository) -> str:
         return format_error_message("No keys found.")
 
     keys_formatted = "\n".join(f"- {k}" for k in keys)
-    return format_success_message("List 10 random keys", f"*Keys*\n```\n{keys_formatted}\n```")
+    return format_success_message(
+        "List 10 random keys", f"*Keys*\n```\n{keys_formatted}\n```"
+    )
 
 
 # Main Bot Command Handler

@@ -1,4 +1,4 @@
-import json
+from dataclasses import dataclass
 from enum import StrEnum
 from types import TracebackType
 from typing import Protocol, Self
@@ -6,12 +6,13 @@ from typing import Protocol, Self
 import libsql_client
 
 from src.db import get_db_client
-from dataclasses import dataclass
+
 
 class Status(StrEnum):
     OK = "ok"
     NO_KEY = "no_key"
     NO_VALUES = "no_values"
+
 
 @dataclass(frozen=True, slots=True)
 class Result[T]:
@@ -27,7 +28,7 @@ class Repository(Protocol):
         """Get the list of values against a key."""
         ...
 
-    async def list_keys(self) -> list[str]:
+    async def list_keys(self) -> Result[list[str]]:
         """List a few keys from the database."""
         ...
 
@@ -77,8 +78,7 @@ class SqliteRepository(Repository):
         """Retrieve the list of values associated with a key."""
 
         query = libsql_client.Statement(
-            "SELECT val FROM acro_kvs WHERE key = ?",
-            (key,)
+            "SELECT val FROM acro_kvs WHERE key = ?", (key,)
         )
         result_set = await self._client.execute(query)
 
@@ -91,13 +91,16 @@ class SqliteRepository(Repository):
 
         return Result(status=Status.OK, data=data)
 
-    async def list_keys(self) -> list[str]:
+    async def list_keys(self) -> Result[list[str]]:
         """List 10 keys from the database."""
 
         # Fetch 10 random keys
-        query = libsql_client.Statement("SELECT DISTINCT key FROM acro_kvs ORDER BY RANDOM() LIMIT 10")
+        query = libsql_client.Statement(
+            "SELECT DISTINCT key FROM acro_kvs ORDER BY RANDOM() LIMIT 10",
+        )
         result_set = await self._client.execute(query)
-        return [row["key"] for row in result_set.rows]
+        data = [row["key"] for row in result_set.rows]
+        return Result(status=Status.OK, data=data)
 
     async def search(self, term: str) -> Result[list[str]]:
         """Search for keys and values that match the input term (case-insensitively) and return up
@@ -118,7 +121,7 @@ class SqliteRepository(Repository):
             JOIN ranked_rows ON acro_kvs.rowid = ranked_rows.rowid
             ORDER BY ranked_rows.rank ASC;
             """,
-            (term.lower(), term.lower())  # Normalize input to lowercase
+            (term.lower(), term.lower()),  # Normalize input to lowercase
         )
         result_set = await self._client.execute(query)
 
@@ -149,13 +152,11 @@ class SqliteRepository(Repository):
         tx = self._client.transaction()
         for val in values:
             await tx.execute(
-                "INSERT INTO acro_kvs (key, val) VALUES (?, ?)",
-                (key, val)
+                "INSERT INTO acro_kvs (key, val) VALUES (?, ?)", (key, val)
             )
         await tx.commit()
 
         return Result(status=Status.OK, data=None)
-
 
     async def remove(self, key: str, values: list[str]) -> Result[None]:
         """Remove specified values from the list associated with the key."""
@@ -185,17 +186,14 @@ class SqliteRepository(Repository):
 
         # Perform batch deletion and insertion in a single transaction
         tx = self._client.transaction()
+
         # Remove all existing values for the key
-        await tx.execute(
-            "DELETE FROM acro_kvs WHERE key = ?",
-            [key]
-        )
+        await tx.execute("DELETE FROM acro_kvs WHERE key = ?", [key])
 
         # Insert the remaining values after removal
         for val in remaining_values:
             await tx.execute(
-                "INSERT INTO acro_kvs (key, val) VALUES (?, ?)",
-                (key, val)
+                "INSERT INTO acro_kvs (key, val) VALUES (?, ?)", (key, val)
             )
 
         await tx.commit()
@@ -204,11 +202,11 @@ class SqliteRepository(Repository):
 
     async def delete(self, key: str) -> Result[None]:
         """Delete a key and its associated values."""
-        val = await self.get(key)
+        result = await self.get(key)
 
-        if not val:
+        if result.status != Status.OK:
             return Result(status=Status.NO_KEY, data=None)
 
         query = libsql_client.Statement("DELETE FROM acro_kvs WHERE key = ?", (key,))
         await self._client.execute(query)
-        return Result(status=Status.OK if val else Status.NO_KEY, data=None)
+        return Result(status=Status.OK, data=None)
