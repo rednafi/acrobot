@@ -1,40 +1,43 @@
--- Create the main table `acro` with strict mode
-CREATE TABLE IF NOT EXISTS acro (
-    rowid INTEGER PRIMARY KEY, -- Primary key auto-increments by default
-    key TEXT NOT NULL UNIQUE, -- Unique constraint ensures no duplicate keys
-    val TEXT DEFAULT NULL CHECK (
-        val IS NULL OR (
-            json_valid(val) AND
-            json_type(val) = 'array' AND
-            json_array_length(val) > 0
-        )
-    )
+-- Main Key-Value table
+CREATE TABLE IF NOT EXISTS acro_kvs (
+    rowid INTEGER PRIMARY KEY,
+    key TEXT NOT NULL,
+    val TEXT NOT NULL,
+    UNIQUE(key, val COLLATE NOCASE) -- Ensures case-insensitive uniqueness
 ) STRICT;
 
--- Create a unique index on the `key` column for fast lookups
-CREATE UNIQUE INDEX IF NOT EXISTS idx_acro_key ON acro(key);
+-- Index for efficient key-based lookups
+CREATE INDEX IF NOT EXISTS idx_kvs_by_key ON acro_kvs(key);
 
--- Create the FTS5 table for full-text search
-CREATE VIRTUAL TABLE IF NOT EXISTS acro_fts USING fts5(
-    key, -- Column to be searchable
-    content=''
+-- FTS table with lowercase data
+CREATE VIRTUAL TABLE IF NOT EXISTS acro_kvs_fts USING fts5(
+    key,
+    val,
+    tokenize='trigram' -- Enables trigram tokenization for partial matching
 );
 
--- Trigger to handle inserts into `acro`
-CREATE TRIGGER IF NOT EXISTS acro_ai AFTER INSERT ON acro
+
+-- The trigger is necessary because we need to keep the key-val in lowercase in the FTS table.
+-- Otherwise, we could just use content="acro_kvs" in the FTS table definition and let sqlite
+-- handle the syncing of the main and FTS tables.
+
+-- Trigger to populate the FTS table on insert
+CREATE TRIGGER IF NOT EXISTS acro_kvs_ai AFTER INSERT ON acro_kvs
 BEGIN
-    INSERT INTO acro_fts(rowid, key) VALUES (new.rowid, new.key);
+    INSERT INTO acro_kvs_fts(rowid, key, val)
+    VALUES (new.rowid, lower(new.key), lower(new.val));
 END;
 
--- Trigger to handle updates to `acro`
-CREATE TRIGGER IF NOT EXISTS acro_au AFTER UPDATE ON acro
-WHEN old.key != new.key
+-- Trigger to update the FTS table on row updates
+CREATE TRIGGER IF NOT EXISTS acro_kvs_au AFTER UPDATE ON acro_kvs
 BEGIN
-    UPDATE acro_fts SET key = new.key WHERE rowid = old.rowid;
+    DELETE FROM acro_kvs_fts WHERE rowid = old.rowid;
+    INSERT INTO acro_kvs_fts(rowid, key, val)
+    VALUES (new.rowid, lower(new.key), lower(new.val));
 END;
 
--- Trigger to handle deletions from `acro`
-CREATE TRIGGER IF NOT EXISTS acro_ad AFTER DELETE ON acro
+-- Trigger to remove entries from the FTS table when rows are deleted
+CREATE TRIGGER IF NOT EXISTS acro_kvs_ad AFTER DELETE ON acro_kvs
 BEGIN
-    INSERT INTO acro_fts(acro_fts, rowid, key) VALUES ('delete', old.rowid, old.key);
+    DELETE FROM acro_kvs_fts WHERE rowid = old.rowid;
 END;

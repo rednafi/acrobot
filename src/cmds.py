@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from src.repo import RemoveStatus, SqliteRepository
+from src.repo import SqliteRepository, Status
 
 
 # Commands Enum
@@ -15,6 +15,7 @@ class Commands(StrEnum):
 
     ADD = "add"
     GET = "get"
+    SEARCH = "search"
     REMOVE = "remove"
     DELETE = "delete"
     LIST = "list"
@@ -79,9 +80,9 @@ async def handle_add(repo: SqliteRepository, args: list[str]) -> str:
         return format_error_message(str(e))
 
     async with repo:
-        status = await repo.add(key, values)
+        result = await repo.add(key, values)
 
-    if status == RemoveStatus.OK:
+    if result.status == Status.OK:
         values_formatted = "\n".join(f"- {v}" for v in values)
         return format_success_message(
             "Values added successfully",
@@ -94,15 +95,20 @@ async def handle_get(repo: SqliteRepository, args: list[str]) -> str:
     """Handle the get command."""
     try:
         command_args = " ".join(args[1:])
-        key, _ = parse_command_args(command_args, require_values=False)
+        key, values = parse_command_args(command_args, require_values=False)
     except ValueError as e:
         return format_error_message(str(e))
 
-    async with repo:
-        values = await repo.get(key)
-        alike_keys = await repo.list_alike_keys(key)
+    if values:
+        return format_error_message("Only the values for a single key can be retrieved at a time.")
 
-    if not values:
+    async with repo:
+        get_result = await repo.get(key)
+
+        search_result = await repo.search(key)
+        alike_keys = search_result.data
+
+    if get_result.status != Status.OK:
         if alike_keys:
             keys_formatted = "\n".join(f"- {k}" for k in alike_keys)
             return format_error_message(
@@ -115,13 +121,36 @@ async def handle_get(repo: SqliteRepository, args: list[str]) -> str:
                     "\n```"
                 )
             )
-
         return format_error_message(f"Values not found for key `{key}`.")
 
-    values_formatted = "\n".join(f"- {v}" for v in values)
+    values_formatted = "\n".join(f"- {v}" for v in get_result.data)
     return format_success_message(
         "Get values",
         f"*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```",
+    )
+
+async def handle_search(repo: SqliteRepository, args: list[str]) -> str:
+    """Handle the search command."""
+    try:
+        command_args = " ".join(args[1:])
+        key, values = parse_command_args(command_args, require_values=False)
+    except ValueError as e:
+        return format_error_message(str(e))
+
+    # Only allow search for a single key
+    if values:
+        return format_error_message("Only a single key can be searched at a time.")
+
+    async with repo:
+        result = await repo.search(key)
+
+    if not result.data:
+        return format_error_message(f"No keys found similar to `{key}`.")
+
+    keys_formatted = "\n".join(f"- {k}" for k in result.data)
+    return format_success_message(
+        "Search results",
+        f"*Keys*\n```\n{keys_formatted}\n```",
     )
 
 
@@ -134,19 +163,20 @@ async def handle_remove(repo: SqliteRepository, args: list[str]) -> str:
         return format_error_message(str(e))
 
     async with repo:
-        status = await repo.remove(key, values)
+        result = await repo.remove(key, values)
 
     values_formatted = "\n".join(f"- {v}" for v in values)
-    if status == RemoveStatus.OK:
+
+    if result.status == Status.OK:
         return format_success_message(
             "Values removed successfully",
             f"*Key*\n\n`{key}`\n\n*Values*\n```\n{values_formatted}\n```",
         )
 
-    if status == RemoveStatus.NO_KEY:
+    if result.status == Status.NO_KEY:
         return format_error_message(f"Key `{key}` not found.")
 
-    if status == RemoveStatus.NO_VALUES:
+    if result.status == Status.NO_VALUES:
         return format_error_message(
             f"Values not found.\n\n*Key*\n```\n{key}\n```\n\n*Values*\n```\n{values_formatted}\n```"
         )
@@ -161,9 +191,9 @@ async def handle_delete(repo: SqliteRepository, args: list[str]) -> str:
         return format_error_message(str(e))
 
     async with repo:
-        status = await repo.delete(key)
+        result = await repo.delete(key)
 
-    if status == RemoveStatus.OK:
+    if result.status == Status.OK:
         return format_success_message(
             "Key deleted successfully", f"*Key*\n```\n{key}\n```"
         )
@@ -179,7 +209,7 @@ async def handle_list(repo: SqliteRepository) -> str:
         return format_error_message("No keys found.")
 
     keys_formatted = "\n".join(f"- {k}" for k in keys)
-    return format_success_message("List keys", f"*Keys*\n```\n{keys_formatted}\n```")
+    return format_success_message("List 10 random keys", f"*Keys*\n```\n{keys_formatted}\n```")
 
 
 # Main Bot Command Handler
@@ -212,9 +242,14 @@ async def acrobot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "- /acro delete <key>\n"
         '- /acro delete "key with spaces"\n'
         "```\n\n"
-        "5. *List all keys*\n"
+        "5. *List a few random keys*\n"
         "```\n"
         "- /acro list\n"
+        "```\n\n"
+        "6. *Fuzzy search across all keys and values*\n"
+        "```\n"
+        "- /acro search <key>\n"
+        '- /acro search "key with spaces"\n'
         "```\n\n"
     )
 
@@ -243,6 +278,8 @@ async def acrobot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 response = await handle_add(repo, context.args)
             case Commands.GET:
                 response = await handle_get(repo, context.args)
+            case Commands.SEARCH:
+                response = await handle_search(repo, context.args)
             case Commands.REMOVE:
                 response = await handle_remove(repo, context.args)
             case Commands.DELETE:
