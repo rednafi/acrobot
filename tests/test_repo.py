@@ -1,5 +1,4 @@
 import asyncio
-import random
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -10,7 +9,7 @@ import sqlparse
 from src.repo import SqliteRepository, Status
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def db_client(tmp_path: Path) -> AsyncGenerator[libsql_client.Client, None]:
     """Fixture to create a test SQLite client."""
     db_path = tmp_path / "test.db"
@@ -25,7 +24,7 @@ async def db_client(tmp_path: Path) -> AsyncGenerator[libsql_client.Client, None
         yield client
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def repo(
     db_client: libsql_client.Client,
 ) -> AsyncGenerator[SqliteRepository, None]:
@@ -290,7 +289,6 @@ class TestSqliteRepository:
         await repo.add("key1", ["value1"])
         result = await repo.remove("key1", [123])  # type: ignore
         assert result.status == Status.NO_VALUES
-
 
     async def test_concurrent_operations(self, repo: SqliteRepository) -> None:
         """Test concurrent add and remove operations."""

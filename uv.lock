@@ -8,7 +8,6 @@ source = { virtual = "." }
 dependencies = [
     { name = "libsql-client" },
     { name = "logfire" },
-    { name = "pydantic-logfire" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "python-telegram-bot" },
@@ -28,7 +27,6 @@ dev = [
 requires-dist = [
     { name = "libsql-client", specifier = ">=0.3.1" },
     { name = "logfire", specifier = ">=2.5.0" },
-    { name = "pydantic-logfire", specifier = ">=0.0.1" },
     { name = "pydantic-settings", specifier = ">=2.6.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "python-telegram-bot", specifier = ">=21.7" },
@@ -692,15 +690,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/16/16/b805c74b35607d24d37103007f899abc4880923b04929547ae68d478b7f4/pydantic_core-2.23.4-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:ed541d70698978a20eb63d8c5d72f2cc6d7079d9d90f6b50bad07826f1320f5f", size = 2116814 },
     { url = "https://files.pythonhosted.org/packages/d1/58/5305e723d9fcdf1c5a655e6a4cc2a07128bf644ff4b1d98daf7a9dbf57da/pydantic_core-2.23.4-cp313-none-win32.whl", hash = "sha256:3d5639516376dce1940ea36edf408c554475369f5da2abd45d44621cb616f769", size = 1738360 },
     { url = "https://files.pythonhosted.org/packages/a5/ae/e14b0ff8b3f48e02394d8acd911376b7b66e164535687ef7dc24ea03072f/pydantic_core-2.23.4-cp313-none-win_amd64.whl", hash = "sha256:5a1504ad17ba4210df3a045132a7baeeba5a200e930f57512ee02909fc5c4cb5", size = 1919411 },
-]
-
-[[package]]
-name = "pydantic-logfire"
-version = "0.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/39/05/7b8700df9f5e700f2b3f20f84760f87f7e4f3ade4ac4f9dcfe7448d718bd/pydantic_logfire-0.0.1.tar.gz", hash = "sha256:c2768ad3ab19d7916b64cd5f5c0d69054bc50db5a9852d1cafe699f275dbe56e", size = 1721 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/21/42ee7cf586c009f27e4e2d86b7ac085a71087d8ce85e3b2777ced5e86ab4/pydantic_logfire-0.0.1-py2.py3-none-any.whl", hash = "sha256:96f2561d1d480c5d21ec6e4d001a171b7d2965ef1e8b114b01ba5c04f6b7f5da", size = 2215 },
 ]
 
 [[package]]

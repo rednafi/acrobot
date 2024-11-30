@@ -10,7 +10,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pydantic-settings>=2.6.1",
-    "pydantic-logfire>=0.0.1",
     "python-telegram-bot>=21.7",
     "sqlparse>=0.5.2",
     "logfire>=2.5.0",
@@ -77,3 +76,10 @@ markers = """
 console_output_style = "progress"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+# Files or patterns to omit from coverage
+omit = [
+    "src/main.py",
+    "src/__init__.py",
+]

@@ -206,19 +206,21 @@ async def handle_delete(repo: SqliteRepository, args: list[str]) -> str:
 async def handle_list(repo: SqliteRepository) -> str:
     """Handle the list command."""
     async with repo:
-        keys = await repo.list_keys()
+        result = await repo.list_keys()
 
-    if not keys:
+    if not result.data:
         return format_error_message("No keys found.")
 
-    keys_formatted = "\n".join(f"- {k}" for k in keys)
+    keys_formatted = "\n".join(f"- {k}" for k in result.data)
     return format_success_message(
         "List 10 random keys", f"*Keys*\n```\n{keys_formatted}\n```"
     )
 
 
 # Main Bot Command Handler
-async def acrobot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def acrobot(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:  # pragma: no cover
     """Handle Acrobot commands."""
     if not update.message:
         logging.debug("Received an update with no message.")
