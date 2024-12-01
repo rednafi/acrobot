@@ -1,8 +1,5 @@
 
-<h1 style="display: inline;">Acrobot</h1>
-<img src="https://github.com/user-attachments/assets/ec1d0bca-1c3f-4333-8669-f2704a8713cc" align="right" width="136" height="136" style="border-radius: 50%;" />
-
----
+# Acrobot
 
 A dead-simple Telegram bot for managing key-value pairs.
 
