@@ -1,7 +1,17 @@
+<div align="left">
 
-# Acrobot
+<h1>Acrobot
+    <img src='https://github.com/user-attachments/assets/ec1d0bca-1c3f-4333-8669-f2704a8713cc'
+         align='right'
+         width='128'
+         height='128'
+         style='border-radius: 50%;'>
+</h1>
 
-A dead-simple Telegram bot for managing key-value pairs.
+<strong>>> <i>A dead-simple Telegram bot for managing key-value pairs</i> <<</strong>
+
+</div>
+
 
 
 ## Why
