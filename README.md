@@ -41,10 +41,8 @@ Here's a list of all the supported commands:
 
 Here's a GIF showing the bot in action:
 
-<video width="640" height="360" controls poster="https://via.placeholder.com/640x360?text=Video+Preview">
-  <source src="https://github.com/user-attachments/assets/5b6aaec5-3be7-47e6-9350-2e0028c466dc" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/7271124b-be35-43b6-9869-8b7afa0a8809
+
 
 ## Deployment
 
