@@ -1,6 +1,11 @@
-# Acrobot
+
+<h1 style="display: inline;">Acrobot</h1>
+<img src="https://github.com/user-attachments/assets/ec1d0bca-1c3f-4333-8669-f2704a8713cc" align="right" width="136" height="136" style="border-radius: 50%;" />
+
+---
 
 A dead-simple Telegram bot for managing key-value pairs.
+
 
 ## Why
 
@@ -54,6 +59,10 @@ The app streams all log messages to [Pydantic Logfire]. Logs appear as follows:
 
 ![Pydantic logfire](https://github.com/user-attachments/assets/7b542bb3-e5f8-4f37-93d7-0b9d992fed94)
 
+
+<div align="center">
+    — ⁂ —
+</div>
 
 [ddl]: ./sql/ddl.sql
 [fts5]: https://sqlite.org/fts5.html
