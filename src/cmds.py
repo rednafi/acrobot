@@ -106,7 +106,6 @@ async def handle_get(repo: SqliteRepository, args: list[str]) -> str:
 
     async with repo:
         get_result = await repo.get(key)
-
         search_result = await repo.search(key)
         alike_keys = search_result.data
 
@@ -200,6 +199,7 @@ async def handle_delete(repo: SqliteRepository, args: list[str]) -> str:
         return format_success_message(
             "Key deleted successfully", f"*Key*\n```\n{key}\n```"
         )
+
     return format_error_message(f"Key `{key}` not found.")
 
 
@@ -257,6 +257,7 @@ async def acrobot(
         "```\n"
         "- /acro search <key>\n"
         '- /acro search "key with spaces"\n'
+        "- /acro search <value>\n"
         "```\n\n"
     )
 
