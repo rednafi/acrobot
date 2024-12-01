@@ -1,15 +1,25 @@
-app = "acrobot-rednafi"
-primary_region = "ams"
+# fly.toml app configuration file generated for acrobot-rednafi on 2024-12-01T20:23:11+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'acrobot-rednafi'
+primary_region = 'ams'
 
 [build]
 
-# Virtual machine configuration
-[[vm]]
-  size = "shared-cpu-1x"   # VM size with sufficient resources
-  processes = ["app"]
-  memory_mb = 512          # Set custom memory size (512MB)
-  ignore_app_secrets = false
-
-# Inject runtime environment variables
 [env]
-  PYTHONUNBUFFERED = "1"  # Ensure Python logs appear instantly
+  PYTHONUNBUFFERED = '1'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory_mb = 512
+  processes = ['app']
