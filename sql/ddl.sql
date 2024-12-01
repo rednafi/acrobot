@@ -13,7 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_kvs_by_key ON acro_kvs(key);
 CREATE VIRTUAL TABLE IF NOT EXISTS acro_kvs_fts USING fts5(
     key,
     val,
-    tokenize='trigram' -- Enables trigram tokenization for partial matching
+    tokenize='trigram trigram case_sensitive 0' -- Enables trigram tokenization for partial matching
 );
 
 
