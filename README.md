@@ -41,7 +41,7 @@ Here's a list of all the supported commands:
 
 Here's a GIF showing the bot in action:
 
-![Demo](https://github.com/user-attachments/assets/7271124b-be35-43b6-9869-8b7afa0a8809)
+https://github.com/user-attachments/assets/7271124b-be35-43b6-9869-8b7afa0a8809
 
 ## Deployment
 
