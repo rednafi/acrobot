@@ -1,17 +1,10 @@
 <div align="left">
 
-<h1>Acrobot
-    <img src='https://github.com/user-attachments/assets/ec1d0bca-1c3f-4333-8669-f2704a8713cc'
-         align='right'
-         width='150'
-         height='150'>
-</h1>
+<h1>Acrobot</h1>
 
 <strong>>> <i>A dead-simple Telegram bot for managing key-value pairs</i> <<</strong>
 
 </div>
-
-
 
 ## Why
 
