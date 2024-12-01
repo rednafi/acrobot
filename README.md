@@ -41,8 +41,7 @@ Here's a list of all the supported commands:
 
 Here's a GIF showing the bot in action:
 
-https://github.com/user-attachments/assets/7271124b-be35-43b6-9869-8b7afa0a8809
-
+![Demo](https://github.com/user-attachments/assets/7271124b-be35-43b6-9869-8b7afa0a8809)
 
 ## Deployment
 
@@ -52,6 +51,9 @@ The [CI] is configured to deploy the bot to a 512MB [Fly.io] machine on every pu
 ## Observability
 
 The app streams all log messages to [Pydantic Logfire]. Logs appear as follows:
+
+![Pydantic logfire](https://github.com/user-attachments/assets/7b542bb3-e5f8-4f37-93d7-0b9d992fed94)
+
 
 [ddl]: ./sql/ddl.sql
 [fts5]: https://sqlite.org/fts5.html
